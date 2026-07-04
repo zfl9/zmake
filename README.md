@@ -129,7 +129,9 @@ pub fn build(b: *std.Build) !void {
 
 ## API 参考
 
-### `ZMake.create(b, name, options) → *ZMake`
+### `ZMake`
+
+#### `ZMake.create(b, name, options) → *ZMake`
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
@@ -144,17 +146,19 @@ pub fn build(b: *std.Build) !void {
 | `run_autogen` | `bool` | 是否在 configure 前执行 autogen.sh（默认 false） |
 | `install_prefix` | `[]const u8` | 逻辑安装前缀（默认 "/usr"） |
 
-### `zmake.add_configure_arg(arg: []const u8)`
+#### `zmake.add_configure_arg(arg: []const u8)`
 
 添加额外的 `./configure` 参数（仅 Autotools）。
 
-### `zmake.build() → LazyPath`
+#### `zmake.build() → LazyPath`
 
 执行构建，返回指向产物目录（即 `{include, lib, ...}` 所在位置）的 `LazyPath`。
 
 ### `Pipeline`
 
-用于串联多个系统命令的辅助工具。
+用于在指定工作目录下依次执行多个系统命令，命令之间自动建立先后依赖关系。每个命令均返回 `*Step.Run`，可继续为其添加参数或配置输出目录。
+
+使用示例参见 ZMake 中的典型模式：`./autogen.sh` → `./configure` → `make` → `make install`。
 
 #### `Pipeline.init(b, cwd) → Pipeline`
 
