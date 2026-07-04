@@ -154,11 +154,13 @@ pub fn build(b: *std.Build) !void {
 
 执行构建，返回指向产物目录（即 `{include, lib, ...}` 所在位置）的 `LazyPath`。
 
+---
+
 ### `Pipeline`
 
-用于在指定工作目录下依次执行多个系统命令，命令之间自动建立先后依赖关系。每个命令均返回 `*Step.Run`，可继续为其添加参数或配置输出目录。
-
-使用示例参见 ZMake 中的典型模式：`./autogen.sh` → `./configure` → `make` → `make install`。
+- 在指定目录下依次执行多个系统命令，命令之间自动建立先后依赖关系。
+- 每个命令均返回 `*Step.Run` 对象，可继续为其添加参数或配置输出目录。
+- 使用示例参见 ZMake 源码：`./autogen.sh` → `./configure` → `make` → `make install`。
 
 #### `Pipeline.init(b, cwd) → Pipeline`
 
