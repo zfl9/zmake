@@ -36,11 +36,11 @@ zig build -Dtarget=x86_64-linux-musl -Dcpu=x86_64_v3
 
 ZMake 的核心思想是**驱动而非重写**。你无需修改上游的任何构建脚本，只需在 `build.zig.zon` 中将 C/C++ 源码（tarball、git 仓库等）作为标准 Zig 包引入，然后在你的 `build.zig` 中调用 ZMake。ZMake 会在 Zig 的隔离沙盒中驱动上游原生的构建系统，同时将 Zig 的完整工具链与交叉编译能力透明注入其中。
 
-这里的关键在于，`build.zig.zon` 中的依赖包只需是一个标准 tarball（`.tar.gz`、`.zip` 等常见打包格式均可），**并不要求** tarball 内包含 `build.zig`、`build.zig.zon` 等 Zig 构建元数据。这正是 Zig 可以无缝承接 C/C++ 项目依赖管理的基础能力。
+这里的关键在于，`build.zig.zon` 中的依赖包只需是一个标准 tarball（`.tar.gz`、`.zip` 等常见打包格式均可），**并不要求** tarball 内包含 `build.zig`、`build.zig.zon` 等 Zig 构建元数据。这正是 Zig 可以无缝承接 C/C++ 项目的基础能力。
 
 ### 核心特性
 
-- **非侵入性 & 无需额外维护**：不修改上游源码，无需向上游项目引入或维护 `build.zig`。
+- **非侵入式 & 无需额外维护**：不修改上游源码，无需向上游项目引入或维护 `build.zig`。
 - **工具链自动注入**：自动将 `zig cc` / `zig c++` 以及 Target、Optimize、LTO 等信息注入至上游构建系统。
 - **缓存系统集成**：将所有的构建上下文序列化为一个描述文件，与 Zig 缓存系统优雅集成，确保并发构建的正确性。
 
@@ -151,3 +151,15 @@ pub fn build(b: *std.Build) !void {
 ### `zmake.build() → LazyPath`
 
 执行构建，返回指向产物目录（即 `{include, lib, ...}` 所在位置）的 `LazyPath`。
+
+### `Pipeline`
+
+用于串联多个系统命令的辅助工具。
+
+#### `Pipeline.init(b, cwd) → Pipeline`
+
+创建一个 Pipeline 实例，`cwd` 为命令执行的工作目录。
+
+#### `pipeline.add(program, options) → *Step.Run`
+
+添加一条命令到 Pipeline 中。命令之间自动建立先后依赖关系，`options.name` 可选，用于标识该步骤的名称。
