@@ -32,7 +32,9 @@ gc_sections: bool,
 strip: bool,
 run_autogen: bool,
 install_prefix: []const u8,
-configure_args: std.ArrayList([]const u8),
+use_bear: bool,
+nproc: usize,
+configure_args: std.ArrayList([]const u8) = .empty,
 
 pub const CreateOptions = struct {
     build_system_type: BuildSystemType,
@@ -50,6 +52,10 @@ pub const CreateOptions = struct {
     run_autogen: bool = false,
     /// logic install directory
     install_prefix: []const u8 = "/usr",
+    /// use `bear -- make` to build
+    use_bear: bool = false,
+    /// make -jN (default: number of CPUs)
+    nproc: ?usize = null,
 };
 
 pub fn create(b: *std.Build, name: []const u8, options: CreateOptions) *ZMake {
@@ -74,7 +80,8 @@ pub fn create(b: *std.Build, name: []const u8, options: CreateOptions) *ZMake {
         },
         .run_autogen = options.run_autogen,
         .install_prefix = b.dupe(options.install_prefix),
-        .configure_args = .empty,
+        .use_bear = options.use_bear,
+        .nproc = options.nproc orelse std.Thread.getCpuCount() catch 1,
     };
     return self;
 }
@@ -133,6 +140,7 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
         \\build_system_type: {s}
         \\run_autogen: {any}
         \\install_prefix: {s}
+        \\bear: {any}
         \\
     , .{
         1, // change this when the build logic changes
@@ -149,6 +157,7 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
         @tagName(self.build_system_type),
         self.run_autogen,
         self.install_prefix,
+        self.use_bear,
     });
     description_buf.appendSlice(allocator, base_description) catch unreachable;
 
@@ -188,9 +197,16 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
     for (self.configure_args.items) |arg|
         configure.addArg(arg); // configure arguments passed by the user
 
-    // make -j$(nproc)
-    const make = pipeline.add("make", .{ .name = self.get_step_name("make") });
-    make.addArg(b.fmt("-j{d}", .{std.Thread.getCpuCount() catch 2}));
+    // make -j<N>
+    if (self.use_bear) {
+        const bear = pipeline.add("bear", .{ .name = self.get_step_name("bear make") });
+        bear.addArg("--");
+        bear.addArg("make");
+        bear.addArg(b.fmt("-j{d}", .{self.nproc}));
+    } else {
+        const make = pipeline.add("make", .{ .name = self.get_step_name("make") });
+        make.addArg(b.fmt("-j{d}", .{self.nproc}));
+    }
 
     // make install DESTDIR=build_out
     const make_install = pipeline.add("make", .{ .name = self.get_step_name("make install") });
