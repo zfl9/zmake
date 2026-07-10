@@ -11,7 +11,7 @@ pub fn create(b: *std.Build, cdb_path: std.Build.LazyPath) *PatchCDB {
     self.* = .{
         .step = .init(.{
             .id = base_id,
-            .name = b.fmt("patch_cdb"),
+            .name = "patch_cdb",
             .owner = b,
             .makeFn = make,
         }),
