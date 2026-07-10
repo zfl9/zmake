@@ -15,6 +15,8 @@ pub fn create(
 ) *Symlink {
     if (std.fs.path.isAbsolute(symlink_filename))
         @panic("symlink path must be relative to the build root");
+    if (symlink_filename.len == 0)
+        @panic("symlink path must not be empty");
 
     const self = b.allocator.create(Symlink) catch @panic("OOM");
     self.* = .{
