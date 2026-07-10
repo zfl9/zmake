@@ -146,8 +146,8 @@ pub fn build(b: *std.Build) !void {
 | `run_autogen` | `bool` | 是否在 configure 前执行 autogen.sh（默认 false） |
 | `install_prefix` | `[]const u8` | 逻辑安装前缀（默认 "/usr"） |
 | `use_bear` | `bool` | 使用 `bear` 构建以生成 compile_commands.json（默认 false） |
-| `build_dir_symlink` | `?[]const u8` | 创建指向 `build_dir` 的符号链接（默认 null） |
-| `nproc` | `usize` | `make -j<N>` 并行数（默认使用当前 CPU 核心数） |
+| `build_dir_symlink` | `[]const u8` | 创建指向 `build_dir` 的符号链接（默认不创建） |
+| `nproc` | `usize` | `make -j<N>` 并行数（默认使用当前的 CPU 核心数） |
 
 #### `zmake.add_configure_arg(arg: []const u8)`
 
