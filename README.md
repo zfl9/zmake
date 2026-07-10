@@ -142,9 +142,12 @@ pub fn build(b: *std.Build) !void {
 | `lto` | `LtoMode` | LTO 模式（默认 none） |
 | `separate_sections` | `bool` | `-ffunction-sections -fdata-sections`（默认 true） |
 | `gc_sections` | `bool` | `-Wl,--gc-sections`（默认 true） |
-| `strip` | `?bool` | 是否剥离符号（默认根据 optimize 自动选择） |
+| `strip` | `bool` | 是否剥离符号（默认根据 optimize 自动选择） |
 | `run_autogen` | `bool` | 是否在 configure 前执行 autogen.sh（默认 false） |
 | `install_prefix` | `[]const u8` | 逻辑安装前缀（默认 "/usr"） |
+| `use_bear` | `bool` | 使用 `bear` 构建以生成 compile_commands.json（默认 false） |
+| `build_dir_symlink` | `?[]const u8` | 创建指向 `build_dir` 的符号链接（默认 null） |
+| `nproc` | `usize` | `make -j<N>` 并行数（默认使用当前 CPU 核心数） |
 
 #### `zmake.add_configure_arg(arg: []const u8)`
 
@@ -169,3 +172,18 @@ pub fn build(b: *std.Build) !void {
 #### `pipeline.add(program, options) → *Step.Run`
 
 添加一条命令到 Pipeline 中。命令之间自动建立先后依赖关系，`options.name` 可选，用于标识该步骤的名称。
+
+---
+
+### `Symlink`
+
+一个自定义的 `std.Build.Step`，用于在项目目录（build_root）下创建 **符号链接**。
+
+#### `Symlink.create(b, symlink_filename, point_to_path) → *Symlink`
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `symlink_filename` | `[]const u8` | 符号链接的文件名 |
+| `point_to_path` | `LazyPath` | 符号链接指向的目标路径 |
+
+> 注：`symlink_filename` 可以包含相对路径，程序将自动创建其目录。

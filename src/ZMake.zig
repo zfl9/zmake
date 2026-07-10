@@ -1,6 +1,7 @@
 const std = @import("std");
 const assert = std.debug.assert;
 const Pipeline = @import("Pipeline.zig");
+const Symlink = @import("Symlink.zig");
 const ZMake = @This();
 
 pub const BuildSystemType = enum {
@@ -32,8 +33,9 @@ gc_sections: bool,
 strip: bool,
 run_autogen: bool,
 install_prefix: []const u8,
-use_bear: bool,
 nproc: usize,
+use_bear: bool,
+build_dir_symlink: ?[]const u8,
 configure_args: std.ArrayList([]const u8) = .empty,
 
 pub const CreateOptions = struct {
@@ -52,10 +54,12 @@ pub const CreateOptions = struct {
     run_autogen: bool = false,
     /// logic install directory
     install_prefix: []const u8 = "/usr",
-    /// use `bear -- make` to build
-    use_bear: bool = false,
     /// make -jN (default: number of CPUs)
     nproc: ?usize = null,
+    /// use `bear -- make` to build
+    use_bear: bool = false,
+    /// create symlink pointing to the `build_dir`
+    build_dir_symlink: ?[]const u8 = null,
 };
 
 pub fn create(b: *std.Build, name: []const u8, options: CreateOptions) *ZMake {
@@ -80,8 +84,9 @@ pub fn create(b: *std.Build, name: []const u8, options: CreateOptions) *ZMake {
         },
         .run_autogen = options.run_autogen,
         .install_prefix = b.dupe(options.install_prefix),
-        .use_bear = options.use_bear,
         .nproc = options.nproc orelse std.Thread.getCpuCount() catch 1,
+        .use_bear = options.use_bear,
+        .build_dir_symlink = if (options.build_dir_symlink) |str| b.dupe(str) else null,
     };
     return self;
 }
@@ -220,6 +225,15 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
         self.install_prefix;
 
     const build_out = out_dir.path(b, rel_path);
+
+    // create symlink pointing to the build dir
+    if (self.build_dir_symlink) |symlink_filename| {
+        // install.step -> symlink.step -> {build_dir, build_out}
+        const symlink = Symlink.create(b, symlink_filename, build_dir);
+        build_out.addStepDependencies(symlink.step); // do symlink after `make install`
+        b.getInstallStep().dependOn(symlink.step);
+    }
+
     return build_out;
 }
 
