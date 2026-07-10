@@ -176,15 +176,13 @@ pub fn build(b: *std.Build) !void {
 | `name` | `[]const u8` | 步骤名称（可选） |
 | `ignore_stdout` | `bool` | 捕获并忽略 stdout（默认 true） |
 
-命令之间自动建立先后依赖关系。
-
 #### `pipeline.add_step(step: *std.Build.Step)`
 
 将一个自定义 Step 追加到 Pipeline 末尾，自动依赖前一个步骤。
 
 #### `pipeline.get_last_step() → *std.Build.Step`
 
-返回 Pipeline 中最后一个 Step，用于在其上建立额外依赖。
+返回 Pipeline 中最后一个 Step。
 
 ---
 
