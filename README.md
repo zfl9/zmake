@@ -145,7 +145,7 @@ pub fn build(b: *std.Build) !void {
 | `strip` | `bool` | 是否剥离符号（默认根据 optimize 自动选择） |
 | `run_autogen` | `bool` | 是否在 configure 前执行 autogen.sh（默认 false） |
 | `install_prefix` | `[]const u8` | 逻辑安装前缀（默认 "/usr"） |
-| `use_bear` | `bool` | 使用 `bear` 构建以生成 compile_commands.json（默认 false） |
+| `use_bear` | `bool` | 使用 `bear` 以生成 **编译数据库**（默认 false） |
 | `build_dir_symlink` | `[]const u8` | 创建指向 `build_dir` 的符号链接（默认不创建） |
 | `nproc` | `usize` | `make -j<N>` 并行数（默认使用当前的 CPU 核心数） |
 
@@ -161,11 +161,7 @@ pub fn build(b: *std.Build) !void {
 
 ### `Pipeline`
 
-在指定目录下依次执行多个系统命令或自定义 Step，命令之间自动建立先后依赖关系。
-
-- 每个命令均返回 `*Step.Run` 对象，可继续为其添加参数或配置输出目录。
-- 自定义 Step 可通过 `add_step()` 接入 Pipeline 的依赖链。
-- 使用示例参见 ZMake 源码：`./autogen.sh` → `./configure` → `make` → `make install`。
+依次执行多个系统命令或自定义 Step，Step 之间自动建立先后依赖关系。
 
 #### `Pipeline.init(b, options) → Pipeline`
 
@@ -209,12 +205,13 @@ pub fn build(b: *std.Build) !void {
 
 ### `PatchCDB`
 
-专用于修复 `bear` 生成的 `compile_commands.json`，将 argv[0] 替换为 `clang`，并过滤 `-mcpu=*` 参数。
+一个自定义的 `std.Build.Step`，用于修复 `bear` 生成的 `compile_commands.json`。
+
+- `argv[0]` 替换为 `clang`
+- 过滤 `-mcpu=*` 等不兼容参数
 
 #### `PatchCDB.create(b, cdb_path) → *PatchCDB`
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
 | `cdb_path` | `LazyPath` | `compile_commands.json` 的路径 |
-
-返回的自定义 Step 应通过 `pipeline.add_step()` 接入 Pipeline。
