@@ -66,7 +66,7 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
         }
     }
 
-    const cdb_file = std.fs.cwd().openFile(cdb_path, .{ .write = true }) catch |err| {
+    const cdb_file = std.fs.cwd().openFile(cdb_path, .{ .mode = .write_only }) catch |err| {
         return step.fail("unable to open '{s}': {s}", .{ cdb_path, @errorName(err) });
     };
     defer cdb_file.close();
