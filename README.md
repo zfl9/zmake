@@ -171,7 +171,7 @@ pub fn build(b: *std.Build) !void {
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
-| `cwd` | `LazyPath` | 命令执行的工作目录（可选，默认 null） |
+| `cwd` | `LazyPath` | 命令执行的工作目录（可选） |
 
 #### `pipeline.add_command(program, options) → *Step.Run`
 
