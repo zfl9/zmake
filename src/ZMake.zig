@@ -2,6 +2,7 @@ const std = @import("std");
 const assert = std.debug.assert;
 const Pipeline = @import("Pipeline.zig");
 const Symlink = @import("Symlink.zig");
+const PatchCDB = @import("PatchCDB.zig");
 const ZMake = @This();
 
 pub const BuildSystemType = enum {
@@ -180,14 +181,14 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
     const build_dir = wf.addCopyDirectory(self.source_dir, "", .{});
     _ = wf.add(".zmake_build.desc", description); // trigger rebuild if necessary
 
-    var pipeline = Pipeline.init(b, build_dir);
+    var pipeline = Pipeline.init(b, .{ .cwd = build_dir });
 
     // autogen.sh
     if (self.run_autogen)
-        _ = pipeline.add("./autogen.sh", .{ .name = self.get_step_name("./autogen.sh") });
+        _ = pipeline.add_command("./autogen.sh", .{ .name = self.get_step_name("./autogen.sh") });
 
     // configure
-    const configure = pipeline.add("./configure", .{ .name = self.get_step_name("./configure") });
+    const configure = pipeline.add_command("./configure", .{ .name = self.get_step_name("./configure") });
     configure.addArg(b.fmt("CC={s} cc -target {s} -mcpu={s}", .{ zig_exe, pure_target, zig_mcpu }));
     configure.addArg(b.fmt("CXX={s} c++ -target {s} -mcpu={s}", .{ zig_exe, pure_target, zig_mcpu }));
     configure.addArg(b.fmt("LD={s} cc -target {s} -mcpu={s}", .{ zig_exe, pure_target, zig_mcpu }));
@@ -204,17 +205,36 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
 
     // make -j<N>
     if (self.use_bear) {
-        const bear = pipeline.add("bear", .{ .name = self.get_step_name("bear make") });
+        const bear_yml = wf.add("bear.yml", b.fmt(
+            \\schema: "4.1"
+            \\compilers:
+            \\  - path: {s}
+            \\    as: clang
+        , .{zig_exe}));
+
+        const bear = pipeline.add_command("bear", .{ .name = self.get_step_name("bear make") });
+        bear.addArg("-c");
+        bear.addFileArg(bear_yml);
         bear.addArg("--");
         bear.addArg("make");
         bear.addArg(b.fmt("-j{d}", .{self.nproc}));
+
+        const patch_cdb = PatchCDB.create(b, build_dir.path(b, "compile_commands.json"));
+        pipeline.add_step(&patch_cdb.step);
     } else {
-        const make = pipeline.add("make", .{ .name = self.get_step_name("make") });
+        const make = pipeline.add_command("make", .{ .name = self.get_step_name("make") });
         make.addArg(b.fmt("-j{d}", .{self.nproc}));
     }
 
+    // create symlink pointing to the build dir
+    if (self.build_dir_symlink) |symlink_filename| {
+        const symlink = Symlink.create(b, symlink_filename, build_dir);
+        symlink.step.dependOn(pipeline.get_last_step()); // do symlink after `make`
+        b.getInstallStep().dependOn(&symlink.step); // reference it in the `install` step
+    }
+
     // make install DESTDIR=build_out
-    const make_install = pipeline.add("make", .{ .name = self.get_step_name("make install") });
+    const make_install = pipeline.add_command("make", .{ .name = self.get_step_name("make install") });
     make_install.addArg("install");
     const out_dir = make_install.addPrefixedOutputDirectoryArg("DESTDIR=", "build_out");
 
@@ -225,15 +245,6 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
         self.install_prefix;
 
     const build_out = out_dir.path(b, rel_path);
-
-    // create symlink pointing to the build dir
-    if (self.build_dir_symlink) |symlink_filename| {
-        // install.step -> symlink.step -> {build_dir, build_out}
-        const symlink = Symlink.create(b, symlink_filename, build_dir);
-        build_out.addStepDependencies(&symlink.step); // do symlink after `make install`
-        b.getInstallStep().dependOn(&symlink.step);
-    }
-
     return build_out;
 }
 
