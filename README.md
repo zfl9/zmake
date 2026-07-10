@@ -161,17 +161,34 @@ pub fn build(b: *std.Build) !void {
 
 ### `Pipeline`
 
-- 在指定目录下依次执行多个系统命令，命令之间自动建立先后依赖关系。
+在指定目录下依次执行多个系统命令或自定义 Step，命令之间自动建立先后依赖关系。
+
 - 每个命令均返回 `*Step.Run` 对象，可继续为其添加参数或配置输出目录。
+- 自定义 Step 可通过 `add_step()` 接入 Pipeline 的依赖链。
 - 使用示例参见 ZMake 源码：`./autogen.sh` → `./configure` → `make` → `make install`。
 
-#### `Pipeline.init(b, cwd) → Pipeline`
+#### `Pipeline.init(b, options) → Pipeline`
 
-创建一个 Pipeline 实例，`cwd` 为命令执行的工作目录。
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `cwd` | `LazyPath` | 命令执行的工作目录（可选，默认 null） |
 
-#### `pipeline.add(program, options) → *Step.Run`
+#### `pipeline.add_command(program, options) → *Step.Run`
 
-添加一条命令到 Pipeline 中。命令之间自动建立先后依赖关系，`options.name` 可选，用于标识该步骤的名称。
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `name` | `[]const u8` | 步骤名称（可选） |
+| `ignore_stdout` | `bool` | 捕获并忽略 stdout（默认 true） |
+
+命令之间自动建立先后依赖关系。
+
+#### `pipeline.add_step(step: *std.Build.Step)`
+
+将一个自定义 Step 追加到 Pipeline 末尾，自动依赖前一个步骤。
+
+#### `pipeline.get_last_step() → *std.Build.Step`
+
+返回 Pipeline 中最后一个 Step，用于在其上建立额外依赖。
 
 ---
 
@@ -187,3 +204,17 @@ pub fn build(b: *std.Build) !void {
 | `point_to_path` | `LazyPath` | 符号链接指向的目标路径 |
 
 > 注：`symlink_filename` 可以包含相对路径，程序将自动创建其目录。
+
+---
+
+### `PatchCDB`
+
+专用于修复 `bear` 生成的 `compile_commands.json`，将 argv[0] 替换为 `clang`，并过滤 `-mcpu=*` 参数。
+
+#### `PatchCDB.create(b, cdb_path) → *PatchCDB`
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `cdb_path` | `LazyPath` | `compile_commands.json` 的路径 |
+
+返回的自定义 Step 应通过 `pipeline.add_step()` 接入 Pipeline。
