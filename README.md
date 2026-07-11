@@ -34,7 +34,7 @@ zig build -Dtarget=x86_64-linux-musl -Dcpu=x86_64_v3
 
 ## 解法
 
-ZMake 的核心思想是**驱动而非重写**。你无需修改上游的任何构建脚本，只需在 `build.zig.zon` 中将 C/C++ 源码（tarball、git 仓库等）作为标准 Zig 包引入，然后在你的 `build.zig` 中调用 ZMake。ZMake 会在 Zig 的隔离沙盒中驱动上游原生的构建系统，同时将 Zig 的完整工具链与交叉编译能力透明注入其中。
+ZMake 的核心思想是**驱动而非重写**。你无需修改上游的任何构建脚本，只需在你的 `build.zig.zon` 中将 C/C++ 源码（tarball、git 仓库等）作为标准 Zig 包引入，然后在你的 `build.zig` 中调用 ZMake。ZMake 会在 Zig 的隔离沙盒中驱动上游原生的构建系统，同时将 Zig 的完整工具链与交叉编译能力透明注入其中。
 
 > `build.zig.zon` 中的依赖包只需是一个标准 tarball（`.tar.gz`、`.zip` 等常见打包格式均可），**并不要求** tarball 内包含 `build.zig`、`build.zig.zon` 等 Zig 构建元数据。这正是 Zig 可以无缝承接 C/C++ 项目的基础能力。
 
