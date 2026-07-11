@@ -66,7 +66,7 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
         }
     }
 
-    const cdb_file = std.fs.cwd().openFile(cdb_path, .{ .mode = .write_only }) catch |err| {
+    const cdb_file = std.fs.cwd().createFile(cdb_path, .{}) catch |err| {
         return step.fail("unable to open '{s}': {s}", .{ cdb_path, @errorName(err) });
     };
     defer cdb_file.close();
@@ -77,12 +77,15 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
 
     var encoder: std.json.Stringify = .{
         .writer = writer,
-        .options = .{ .whitespace = .indent_4, .emit_null_optional_fields = false },
+        .options = .{
+            .whitespace = .indent_4,
+            .emit_null_optional_fields = false,
+        },
     };
     encoder.write(cdb_parsed.value) catch |err| {
         return step.fail("unable to stringify '{s}': {s}", .{ cdb_path, @errorName(err) });
     };
-    file_writer.end() catch |err| {
-        return step.fail("unable to finalize '{s}': {s}", .{ cdb_path, @errorName(err) });
+    writer.flush() catch |err| {
+        return step.fail("unable to write '{s}': {s}", .{ cdb_path, @errorName(err) });
     };
 }
