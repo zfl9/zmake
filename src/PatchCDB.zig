@@ -85,6 +85,9 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     encoder.write(cdb_parsed.value) catch |err| {
         return step.fail("unable to stringify '{s}': {s}", .{ cdb_path, @errorName(err) });
     };
+    writer.writeByte('\n') catch |err| {
+        return step.fail("unable to write '{s}': {s}", .{ cdb_path, @errorName(err) });
+    };
     writer.flush() catch |err| {
         return step.fail("unable to write '{s}': {s}", .{ cdb_path, @errorName(err) });
     };
