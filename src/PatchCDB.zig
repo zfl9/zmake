@@ -35,11 +35,12 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     const self: *PatchCDB = @fieldParentPtr("step", step);
 
     const cdb_path = self.cdb_path.getPath2(b, step);
-    const cdb_content = std.fs.cwd().readFileAlloc(b.allocator, cdb_path, 50 * 1024 * 1024) catch |err| {
+    const cdb_maxsize = 10 * 1024 * 1024;
+    const cdb_content = std.fs.cwd().readFileAlloc(b.allocator, cdb_path, cdb_maxsize) catch |err| {
         return step.fail("unable to read '{s}': {s}", .{ cdb_path, @errorName(err) });
     };
 
-    // read as json, replace the argv[0] with clang, remove -mcpu=*
+    // read as json
     const cdb_parsed: std.json.Parsed([]Entry) = std.json.parseFromSlice(
         []Entry,
         b.allocator,
@@ -50,20 +51,32 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     };
     defer cdb_parsed.deinit();
 
+    var ok = true;
+
+    // replace the argv[0] with clang, remove -mcpu=*
     for (cdb_parsed.value) |*entry| {
         if (entry.arguments) |arguments| {
+            if (std.mem.eql(u8, arguments[0], "clang"))
+                continue;
+            ok = false;
             var argv: std.ArrayList([]const u8) = .empty;
             defer argv.deinit(b.allocator);
-            argv.ensureTotalCapacity(b.allocator, arguments.len) catch @panic("OOM");
+            try argv.ensureTotalCapacity(b.allocator, arguments.len);
             argv.appendAssumeCapacity("clang");
             for (arguments[1..]) |arg| {
                 if (!std.mem.startsWith(u8, arg, "-mcpu="))
                     argv.appendAssumeCapacity(arg);
             }
-            entry.arguments = argv.toOwnedSlice(b.allocator) catch @panic("OOM");
+            entry.arguments = try argv.toOwnedSlice(b.allocator);
         } else if (entry.command) |_| {
             return step.fail("please use the `arguments` field instead of the `command` field", .{});
         }
+    }
+
+    // fast path: nothing to patch
+    if (ok) {
+        step.result_cached = true;
+        return;
     }
 
     const cdb_file = std.fs.cwd().createFile(cdb_path, .{}) catch |err| {
@@ -71,8 +84,8 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     };
     defer cdb_file.close();
 
-    var tmp_buf: [1024]u8 = undefined;
-    var file_writer = cdb_file.writerStreaming(&tmp_buf);
+    var writer_buf: [4096]u8 = undefined;
+    var file_writer = cdb_file.writerStreaming(&writer_buf);
     const writer = &file_writer.interface;
 
     var encoder: std.json.Stringify = .{
