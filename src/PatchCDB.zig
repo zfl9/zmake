@@ -77,9 +77,12 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
 
     var encoder: std.json.Stringify = .{
         .writer = writer,
-        .options = .{ .whitespace = .indent_4 },
+        .options = .{ .whitespace = .indent_4, .emit_null_optional_fields = false },
     };
     encoder.write(cdb_parsed.value) catch |err| {
         return step.fail("unable to stringify '{s}': {s}", .{ cdb_path, @errorName(err) });
+    };
+    file_writer.end() catch |err| {
+        return step.fail("unable to finalize '{s}': {s}", .{ cdb_path, @errorName(err) });
     };
 }
