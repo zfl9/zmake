@@ -38,6 +38,8 @@ nproc: usize,
 use_bear: bool,
 build_dir_symlink: ?[]const u8,
 configure_args: std.ArrayList([]const u8) = .empty,
+build_dir: ?std.Build.LazyPath = null,
+build_out: ?std.Build.LazyPath = null,
 
 pub const CreateOptions = struct {
     build_system_type: BuildSystemType,
@@ -101,6 +103,9 @@ pub fn add_configure_arg(self: *ZMake, arg: []const u8) void {
 
 /// return the path to the `build_out` directory
 pub fn build(self: *ZMake) std.Build.LazyPath {
+    if (self.build_dir != null or self.build_out != null)
+        @panic("build() has already been called");
+
     self.build_system_type.check_todo();
 
     const b = self.b;
@@ -179,6 +184,7 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
     const wf = b.addWriteFiles();
     wf.step.name = self.get_step_name("copy source");
     const build_dir = wf.addCopyDirectory(self.source_dir, "", .{});
+    self.build_dir = build_dir;
     _ = wf.add(".zmake_build.desc", description); // trigger rebuild if necessary
 
     var pipeline = Pipeline.init(b, .{ .cwd = build_dir });
@@ -245,10 +251,19 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
         self.install_prefix;
 
     const build_out = out_dir.path(b, rel_path);
+    self.build_out = build_out;
     return build_out;
 }
 
-fn get_step_name(self: *ZMake, step_name: []const u8) []const u8 {
+pub fn get_build_dir(self: *const ZMake) std.Build.LazyPath {
+    return self.build_dir orelse @panic("build() has not been called");
+}
+
+pub fn get_build_out(self: *const ZMake) std.Build.LazyPath {
+    return self.build_out orelse @panic("build() has not been called");
+}
+
+fn get_step_name(self: *const ZMake, step_name: []const u8) []const u8 {
     const b = self.b;
     return b.fmt("zmake:{s} {s}", .{ self.name, step_name });
 }

@@ -35,7 +35,7 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     const self: *PatchCDB = @fieldParentPtr("step", step);
 
     const cdb_path = self.cdb_path.getPath2(b, step);
-    const cdb_maxsize = 10 * 1024 * 1024;
+    const cdb_maxsize = 50 * 1024 * 1024;
     const cdb_content = std.fs.cwd().readFileAlloc(b.allocator, cdb_path, cdb_maxsize) catch |err| {
         return step.fail("unable to read '{s}': {s}", .{ cdb_path, @errorName(err) });
     };
