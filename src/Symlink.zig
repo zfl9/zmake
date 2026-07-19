@@ -41,18 +41,24 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     const b = step.owner;
     const self: *Symlink = @fieldParentPtr("step", step);
 
+    var path_buf1: [std.fs.max_path_bytes]u8 = undefined;
+    const build_root = try b.build_root.handle.realpath(".", &path_buf1);
+
+    const symlink_path = b.pathResolve(&.{ build_root, self.symlink_filename });
+    const symlink_path_dir = std.fs.path.dirname(symlink_path).?;
+
+    var path_buf2: [std.fs.max_path_bytes]u8 = undefined;
+    const target_path_raw = self.point_to_path.getPath3(b, step);
+    const target_path_abs = try target_path_raw.root_dir.handle.realpath(target_path_raw.sub_path, &path_buf2);
+
     // convert the target_path to a relative path
-    const build_root_path = b.build_root.path orelse std.process.getCwdAlloc(b.allocator) catch @panic("OOM");
-    const symlink_path = std.fs.path.resolve(b.allocator, &.{ build_root_path, self.symlink_filename }) catch @panic("OOM");
-    const symlink_dir_path = std.fs.path.dirname(symlink_path) orelse build_root_path;
-    const raw_target_path = self.point_to_path.getPath3(b, step).toString(b.allocator) catch @panic("OOM");
-    const target_path = std.fs.path.relative(b.allocator, symlink_dir_path, raw_target_path) catch @panic("OOM");
+    const target_path_rel = try std.fs.path.relative(b.allocator, symlink_path_dir, target_path_abs);
 
     // make sure the symlink's directory exists
     if (std.fs.path.dirname(self.symlink_filename)) |dirname| {
         b.build_root.handle.makePath(dirname) catch |err| {
-            return step.fail("unable to make path '{f}{s}': {s}", .{
-                b.build_root, dirname, @errorName(err),
+            return step.fail("unable to make path '{s}': {s}", .{
+                symlink_path_dir, @errorName(err),
             });
         };
     }
@@ -60,14 +66,14 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     // delete the old symlink if it exists
     b.build_root.handle.deleteFile(self.symlink_filename) catch |err| switch (err) {
         error.FileNotFound => {}, // that's fine
-        else => return step.fail("unable to delete old symlink '{f}{s}': {s}", .{
-            b.build_root, self.symlink_filename, @errorName(err),
+        else => return step.fail("unable to delete old symlink '{s}': {s}", .{
+            symlink_path, @errorName(err),
         }),
     };
 
-    b.build_root.handle.symLink(target_path, self.symlink_filename, .{ .is_directory = true }) catch |err| {
-        return step.fail("unable to create symlink '{f}{s}' pointing to '{s}': {s}", .{
-            b.build_root, self.symlink_filename, target_path, @errorName(err),
+    b.build_root.handle.symLink(target_path_rel, self.symlink_filename, .{ .is_directory = true }) catch |err| {
+        return step.fail("unable to create symlink '{s}' pointing to '{s}': {s}", .{
+            symlink_path, target_path_rel, @errorName(err),
         });
     };
 }
