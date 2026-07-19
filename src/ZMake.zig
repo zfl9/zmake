@@ -2,7 +2,7 @@ const std = @import("std");
 const assert = std.debug.assert;
 const Pipeline = @import("Pipeline.zig");
 const Symlink = @import("Symlink.zig");
-const zcdb = @import("zcdb");
+const zcdb = @import("../build.zig").zcdb;
 const ZMake = @This();
 
 pub const BuildSystemType = enum {
@@ -126,7 +126,10 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
     const f_separate_sections = if (self.separate_sections) "-ffunction-sections -fdata-sections" else "";
     const f_gc_sections = if (self.gc_sections) "-Wl,--gc-sections" else "";
     const f_strip = if (self.strip) "-Wl,-s" else "";
-    const f_zcdb = if (zcdb.require_cflags(b, self.target)) |cflags| std.mem.join(allocator, " ", cflags) else "";
+    const f_zcdb = if (zcdb.require_cflags(b, self.target)) |cflags|
+        std.mem.join(allocator, " ", cflags) catch unreachable
+    else
+        "";
 
     var description_buf: std.ArrayList(u8) = .empty;
     defer description_buf.deinit(allocator);
