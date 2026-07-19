@@ -60,7 +60,7 @@ zig fetch --save=zmake https://github.com/zfl9/zmake/archive/refs/tags/v1.3.0.ta
 zig fetch --save=wolfssl https://github.com/wolfSSL/wolfssl/archive/refs/tags/v5.9.2-stable.tar.gz
 ```
 
-执行后 `build.zig.zon` 中将包含：
+执行后 `build.zig.zon` 将包含：
 
 ```zig
 .{
