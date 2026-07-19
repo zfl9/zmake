@@ -2,7 +2,6 @@ const std = @import("std");
 const assert = std.debug.assert;
 const Pipeline = @import("Pipeline.zig");
 const Symlink = @import("Symlink.zig");
-const zcdb = @import("../build.zig").zcdb;
 const ZMake = @This();
 
 pub const BuildSystemType = enum {
@@ -126,11 +125,6 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
     const f_separate_sections = if (self.separate_sections) "-ffunction-sections -fdata-sections" else "";
     const f_gc_sections = if (self.gc_sections) "-Wl,--gc-sections" else "";
     const f_strip = if (self.strip) "-Wl,-s" else "";
-    const f_zcdb = if (zcdb.require_cflags(b, self.target)) |cflags|
-        std.mem.join(allocator, " ", cflags) catch unreachable
-    else
-        "";
-
     var description_buf: std.ArrayList(u8) = .empty;
     defer description_buf.deinit(allocator);
 
@@ -148,7 +142,6 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
         \\f_separate_sections: {s}
         \\f_gc_sections: {s}
         \\f_strip: {s}
-        \\f_zcdb: {s}
         \\build_system_type: {s}
         \\run_autogen: {any}
         \\install_prefix: {s}
@@ -165,7 +158,6 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
         f_separate_sections,
         f_gc_sections,
         f_strip,
-        f_zcdb,
         @tagName(self.build_system_type),
         self.run_autogen,
         self.install_prefix,
@@ -201,8 +193,8 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
     configure.addArg(b.fmt("AR={s} ar", .{zig_exe}));
     configure.addArg(b.fmt("RANLIB={s} ranlib", .{zig_exe}));
     configure.addArg(b.fmt("OBJCOPY={s} objcopy", .{zig_exe}));
-    configure.addArg(b.fmt("CFLAGS={s} {s} {s}", .{ f_optimize, f_separate_sections, f_zcdb }));
-    configure.addArg(b.fmt("CXXFLAGS={s} {s} {s}", .{ f_optimize, f_separate_sections, f_zcdb }));
+    configure.addArg(b.fmt("CFLAGS={s} {s}", .{ f_optimize, f_separate_sections }));
+    configure.addArg(b.fmt("CXXFLAGS={s} {s}", .{ f_optimize, f_separate_sections }));
     configure.addArg(b.fmt("LDFLAGS={s} {s} {s}", .{ f_optimize, f_gc_sections, f_strip }));
     configure.addArg(b.fmt("--host={s}", .{pure_target})); // must use the linux target
     configure.addArg(b.fmt("--prefix={s}", .{self.install_prefix})); // the logic install directory
