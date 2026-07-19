@@ -9,9 +9,5 @@
             .hash = "zcdb-1.0.0-oNhNGHhhAAD7QQ6iYmpZ-jq0RIWM8y5j8bqKEhJ396sE",
         },
     },
-    .paths = .{
-        "build.zig",
-        "build.zig.zon",
-        "src",
-    },
+    .paths = .{""},
 }
