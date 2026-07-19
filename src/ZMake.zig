@@ -148,7 +148,6 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
         \\f_separate_sections: {s}
         \\f_gc_sections: {s}
         \\f_strip: {s}
-        \\f_zcdb: {s}
         \\build_system_type: {s}
         \\run_autogen: {any}
         \\install_prefix: {s}
@@ -165,7 +164,6 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
         f_separate_sections,
         f_gc_sections,
         f_strip,
-        f_zcdb,
         @tagName(self.build_system_type),
         self.run_autogen,
         self.install_prefix,
