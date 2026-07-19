@@ -5,8 +5,8 @@
     .minimum_zig_version = "0.15.2",
     .dependencies = .{
         .zcdb = .{
-            .url = "https://github.com/zfl9/zcdb/archive/f04bf68.tar.gz",
-            .hash = "zcdb-1.0.0-oNhNGHhhAAD7QQ6iYmpZ-jq0RIWM8y5j8bqKEhJ396sE",
+            .url = "https://github.com/zfl9/zcdb/archive/3b13c03.tar.gz",
+            .hash = "zcdb-1.0.0-oNhNGCZfAAA_NyDERJ4iOszc4s7iVxgH2PbPrdPWQkNI",
         },
     },
     .paths = .{""},
