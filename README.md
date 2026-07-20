@@ -146,6 +146,7 @@ pub fn build(b: *std.Build) !void {
 | `run_autogen` | `bool` | 是否在 configure 前执行 autogen.sh（默认 false） |
 | `install_prefix` | `[]const u8` | 逻辑安装前缀（默认 "/usr"） |
 | `nproc` | `usize` | `make -j<N>` 并行数（默认使用当前的 CPU 核心数） |
+| `use_bear` | `bool` | 使用 `bear` 以生成 **编译数据库**（默认 false） |
 | `build_dir_symlink` | `[]const u8` | 创建指向 `build_dir` 的符号链接（默认不创建） |
 
 #### `zmake.add_configure_arg(arg: []const u8)`
@@ -205,3 +206,18 @@ pub fn build(b: *std.Build) !void {
 | `point_to_path` | `LazyPath` | 符号链接指向的目标路径 |
 
 > 注：`symlink_filename` 可以包含相对路径，程序将自动创建其目录。
+
+---
+
+### `PatchCDB`
+
+一个自定义的 `std.Build.Step`，用于修复 `bear` 生成的 `compile_commands.json`。
+
+- `argv[0]` 替换为 `clang`
+- 过滤 `-mcpu=*` 等不兼容参数
+
+#### `PatchCDB.create(b, cdb_path) → *PatchCDB`
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `cdb_path` | `LazyPath` | `compile_commands.json` 的路径 |

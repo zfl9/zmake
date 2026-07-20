@@ -2,6 +2,7 @@ const std = @import("std");
 const assert = std.debug.assert;
 const Pipeline = @import("Pipeline.zig");
 const Symlink = @import("Symlink.zig");
+const PatchCDB = @import("PatchCDB.zig");
 const ZMake = @This();
 
 pub const BuildSystemType = enum {
@@ -34,6 +35,7 @@ strip: bool,
 run_autogen: bool,
 install_prefix: []const u8,
 nproc: usize,
+use_bear: bool,
 build_dir_symlink: ?[]const u8,
 configure_args: std.ArrayList([]const u8) = .empty,
 build_dir: ?std.Build.LazyPath = null,
@@ -57,6 +59,8 @@ pub const CreateOptions = struct {
     install_prefix: []const u8 = "/usr",
     /// make -jN (default: number of CPUs)
     nproc: ?usize = null,
+    /// use `bear -- make` to build
+    use_bear: bool = false,
     /// create symlink pointing to the `build_dir`
     build_dir_symlink: ?[]const u8 = null,
 };
@@ -84,6 +88,7 @@ pub fn create(b: *std.Build, name: []const u8, options: CreateOptions) *ZMake {
         .run_autogen = options.run_autogen,
         .install_prefix = b.dupe(options.install_prefix),
         .nproc = options.nproc orelse std.Thread.getCpuCount() catch 1,
+        .use_bear = options.use_bear,
         .build_dir_symlink = if (options.build_dir_symlink) |str| b.dupe(str) else null,
     };
     return self;
@@ -146,9 +151,10 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
         \\build_system_type: {s}
         \\run_autogen: {any}
         \\install_prefix: {s}
+        \\bear: {any}
         \\
     , .{
-        2, // change this when the build logic changes
+        3, // change this when the build logic changes
         zig_exe,
         zig_target,
         pure_target,
@@ -162,6 +168,7 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
         @tagName(self.build_system_type),
         self.run_autogen,
         self.install_prefix,
+        self.use_bear,
     });
     description_buf.appendSlice(allocator, base_description) catch unreachable;
 
@@ -203,8 +210,27 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
         configure.addArg(arg); // configure arguments passed by the user
 
     // make -j<N>
-    const make = pipeline.add_command("make", .{ .name = self.get_step_name("make") });
-    make.addArg(b.fmt("-j{d}", .{self.nproc}));
+    if (self.use_bear) {
+        const bear_yml = wf.add("bear.yml", b.fmt(
+            \\schema: "4.1"
+            \\compilers:
+            \\  - path: {s}
+            \\    as: clang
+        , .{zig_exe}));
+
+        const bear = pipeline.add_command("bear", .{ .name = self.get_step_name("bear make") });
+        bear.addArg("-c");
+        bear.addFileArg(bear_yml);
+        bear.addArg("--");
+        bear.addArg("make");
+        bear.addArg(b.fmt("-j{d}", .{self.nproc}));
+
+        const patch_cdb = PatchCDB.create(b, build_dir.path(b, "compile_commands.json"));
+        pipeline.add_step(&patch_cdb.step);
+    } else {
+        const make = pipeline.add_command("make", .{ .name = self.get_step_name("make") });
+        make.addArg(b.fmt("-j{d}", .{self.nproc}));
+    }
 
     // create symlink pointing to the build dir
     if (self.build_dir_symlink) |symlink_filename| {
