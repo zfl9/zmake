@@ -88,74 +88,20 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     var file_writer = cdb_file.writerStreaming(&writer_buf);
     const writer = &file_writer.interface;
 
-    try writeEntries(writer, cdb_parsed.value);
-    try writer.writeByte('\n');
-    try writer.flush();
-}
-
-fn writeEntries(writer: anytype, entries: []Entry) !void {
-    try writer.writeAll("[\n");
-    for (entries, 0..) |entry, i| {
-        if (i > 0) try writer.writeAll(",\n");
-        try writeEntry(writer, entry);
-    }
-    try writer.writeAll("\n]");
-}
-
-fn writeEntry(writer: anytype, entry: Entry) !void {
-    try writer.writeAll("  {\n");
-    try writeField(writer, "directory", entry.directory, hasNext(entry, 0));
-    try writeField(writer, "file", entry.file, hasNext(entry, 1));
-    if (entry.arguments) |args| {
-        try writer.writeAll("    \"arguments\": [");
-        for (args, 0..) |arg, j| {
-            if (j > 0) try writer.writeAll(", ");
-            try writer.writeByte('"');
-            try writeJsonString(writer, arg);
-            try writer.writeByte('"');
-        }
-        try writer.writeAll("]");
-        if (hasNext(entry, 2)) try writer.writeByte(',');
-        try writer.writeByte('\n');
-    }
-    if (entry.output) |output| {
-        try writeField(writer, "output", output, hasNext(entry, 3));
-    }
-    if (entry.command) |command| {
-        try writeField(writer, "command", command, false);
-    }
-    try writer.writeAll("  }");
-}
-
-fn hasNext(entry: Entry, field_idx: usize) bool {
-    return switch (field_idx) {
-        0 => true, // directory → always has file next
-        1 => entry.arguments != null or entry.output != null or entry.command != null,
-        2 => entry.output != null or entry.command != null,
-        3 => entry.command != null,
-        else => false,
+    var encoder: std.json.Stringify = .{
+        .writer = writer,
+        .options = .{
+            .whitespace = .indent_4,
+            .emit_null_optional_fields = false,
+        },
     };
-}
-
-fn writeField(writer: anytype, name: []const u8, value: []const u8, has_next: bool) !void {
-    try writer.writeAll("    \"");
-    try writer.writeAll(name);
-    try writer.writeAll("\": \"");
-    try writeJsonString(writer, value);
-    try writer.writeAll("\"");
-    if (has_next) try writer.writeByte(',');
-    try writer.writeByte('\n');
-}
-
-fn writeJsonString(writer: anytype, str: []const u8) !void {
-    for (str) |c| {
-        switch (c) {
-            '\\' => try writer.writeAll("\\\\"),
-            '"' => try writer.writeAll("\\\""),
-            '\n' => try writer.writeAll("\\n"),
-            '\r' => try writer.writeAll("\\r"),
-            '\t' => try writer.writeAll("\\t"),
-            else => try writer.writeByte(c),
-        }
-    }
+    encoder.write(cdb_parsed.value) catch |err| {
+        return step.fail("unable to stringify '{s}': {s}", .{ cdb_path, @errorName(err) });
+    };
+    writer.writeByte('\n') catch |err| {
+        return step.fail("unable to write '{s}': {s}", .{ cdb_path, @errorName(err) });
+    };
+    writer.flush() catch |err| {
+        return step.fail("unable to write '{s}': {s}", .{ cdb_path, @errorName(err) });
+    };
 }
