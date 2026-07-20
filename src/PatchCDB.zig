@@ -84,24 +84,17 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     };
     defer cdb_file.close();
 
-    var writer_buf: [4096]u8 = undefined;
-    var file_writer = cdb_file.writerStreaming(&writer_buf);
-    const writer = &file_writer.interface;
+    var writer = cdb_file.writer(try b.allocator.alloc(u8, 64 * 1024));
 
-    var encoder: std.json.Stringify = .{
-        .writer = writer,
-        .options = .{
-            .whitespace = .indent_4,
-            .emit_null_optional_fields = false,
-        },
-    };
-    encoder.write(cdb_parsed.value) catch |err| {
-        return step.fail("unable to stringify '{s}': {s}", .{ cdb_path, @errorName(err) });
-    };
-    writer.writeByte('\n') catch |err| {
-        return step.fail("unable to write '{s}': {s}", .{ cdb_path, @errorName(err) });
-    };
-    writer.flush() catch |err| {
-        return step.fail("unable to write '{s}': {s}", .{ cdb_path, @errorName(err) });
-    };
+    try writer.interface.writeAll("[");
+    for (cdb_parsed.value, 0..) |entry, i| {
+        if (i == 0) {
+            try writer.interface.writeAll("\n  ");
+        } else {
+            try writer.interface.writeAll(",\n  ");
+        }
+        try std.json.Stringify.value(entry, .{ .emit_null_optional_fields = false }, &writer.interface);
+    }
+    try writer.interface.writeAll("\n]\n");
+    try writer.interface.flush();
 }
