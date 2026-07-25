@@ -51,22 +51,39 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     };
     defer cdb_parsed.deinit();
 
-    var ok = true;
+    var already_patched = true;
 
     // replace the argv[0] with clang, remove -mcpu=*
     for (cdb_parsed.value) |*entry| {
         if (entry.arguments) |arguments| {
-            if (std.mem.eql(u8, arguments[0], "clang"))
+            // check if already patched
+            if (std.mem.startsWith(u8, arguments[0], "clang"))
                 continue;
-            ok = false;
+
+            already_patched = false;
+
+            const is_cpp = r: {
+                const ext = std.fs.path.extension(entry.file);
+                break :r std.ascii.eqlIgnoreCase(ext, ".cpp") or
+                    std.ascii.eqlIgnoreCase(ext, ".cc") or
+                    std.ascii.eqlIgnoreCase(ext, ".cxx") or
+                    std.ascii.eqlIgnoreCase(ext, ".c++");
+            };
+
             var argv: std.ArrayList([]const u8) = .empty;
             defer argv.deinit(b.allocator);
+
             try argv.ensureTotalCapacity(b.allocator, arguments.len);
-            argv.appendAssumeCapacity("clang");
+
+            // replace the argv[0] with clang/clang++
+            argv.appendAssumeCapacity(if (is_cpp) "clang++" else "clang");
+
+            // remove the -mcpu=* argument
             for (arguments[1..]) |arg| {
                 if (!std.mem.startsWith(u8, arg, "-mcpu="))
                     argv.appendAssumeCapacity(arg);
             }
+
             entry.arguments = try argv.toOwnedSlice(b.allocator);
         } else if (entry.command) |_| {
             return step.fail("please use the `arguments` field instead of the `command` field", .{});
@@ -74,7 +91,7 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     }
 
     // fast path: nothing to patch
-    if (ok) {
+    if (already_patched) {
         step.result_cached = true;
         return;
     }
@@ -96,5 +113,6 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
         try std.json.Stringify.value(entry, .{ .emit_null_optional_fields = false }, &writer.interface);
     }
     try writer.interface.writeAll("\n]\n");
+
     try writer.interface.flush();
 }
