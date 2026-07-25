@@ -149,6 +149,8 @@ pub fn build(b: *std.Build) !void {
 | `use_bear` | `bool` | 使用 `bear` 以生成 **编译数据库**（默认 false） |
 | `build_dir_symlink` | `[]const u8` | 创建指向 `build_dir` 的符号链接（默认不创建） |
 
+> `use_bear=false` 时，build_dir 下也会创建 `compile_commands.json`，内容是 `[]` 空列表。
+
 #### `zmake.add_configure_arg(arg: []const u8)`
 
 添加额外的 `./configure` 参数（仅 Autotools）。

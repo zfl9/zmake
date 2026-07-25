@@ -180,7 +180,7 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
 
     const description = description_buf.toOwnedSlice(allocator) catch unreachable;
 
-    // copy the source dir to the build directory
+    // copy the source files to the build_dir
     const wf = b.addWriteFiles();
     wf.step.name = self.get_step_name("copy source");
     const build_dir = wf.addCopyDirectory(self.source_dir, "", .{});
@@ -230,13 +230,7 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
     } else {
         const make = pipeline.add_command("make", .{ .name = self.get_step_name("make") });
         make.addArg(b.fmt("-j{d}", .{self.nproc}));
-    }
-
-    // create symlink pointing to the build dir
-    if (self.build_dir_symlink) |symlink_filename| {
-        const symlink = Symlink.create(b, symlink_filename, build_dir);
-        symlink.step.dependOn(pipeline.get_last_step()); // do symlink after `make`
-        b.getInstallStep().dependOn(&symlink.step); // reference it in the `install` step
+        _ = wf.add("compile_commands.json", "[]\n");
     }
 
     // make install DESTDIR=build_out
@@ -250,8 +244,17 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
     else
         self.install_prefix;
 
+    // get the build_out directory
     const build_out = out_dir.path(b, rel_path);
     self.build_out = build_out;
+
+    // create symlink pointing to the build_dir
+    if (self.build_dir_symlink) |symlink_filename| {
+        const symlink = Symlink.create(b, symlink_filename, build_dir);
+        symlink.step.dependOn(pipeline.get_last_step()); // do symlink after `build`
+        b.getInstallStep().dependOn(&symlink.step); // reference it in the `install` step
+    }
+
     return build_out;
 }
 
