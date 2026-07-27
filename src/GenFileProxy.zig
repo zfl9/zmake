@@ -13,7 +13,7 @@ pub fn create(b: *std.Build, underlying: *const std.Build.GeneratedFile) *std.Bu
     self.* = .{
         .step = .init(.{
             .id = base_id,
-            .name = "gen_file_proxy",
+            .name = b.fmt("gen_file_proxy {s}", .{underlying.step.name}),
             .owner = b,
             .makeFn = make,
         }),
@@ -32,4 +32,6 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
 
     assert(self.underlying.path != null);
     self.genfile.path = self.underlying.path;
+
+    self.step.result_cached = self.underlying.step.result_cached;
 }
