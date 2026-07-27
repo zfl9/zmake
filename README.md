@@ -223,3 +223,15 @@ pub fn build(b: *std.Build) !void {
 | 参数 | 类型 | 说明 |
 |------|------|------|
 | `cdb_path` | `LazyPath` | `compile_commands.json` 的路径 |
+
+---
+
+### `GenFileProxy`
+
+为目标 GeneratedFile 创建一个代理，以便执行 `proxy.step.dependOn(other_step)`（依赖其他 step）。
+
+#### `GenFileProxy.create(b, underlying) → *GeneratedFile`
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `underlying` | `*const GeneratedFile` | 被代理的原始 `GeneratedFile` |
