@@ -245,8 +245,7 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
         self.install_prefix;
 
     // get the build_out directory
-    const build_out = out_dir.path(b, rel_path);
-    self.build_out = build_out;
+    self.build_out = out_dir.path(b, rel_path);
 
     // create the build_dir lazy_path
     self.build_dir = .{
@@ -265,7 +264,7 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
         b.getInstallStep().dependOn(&symlink.step); // reference it in the `install` step
     }
 
-    return build_out.?;
+    return self.build_out.?;
 }
 
 pub fn get_build_dir(self: *const ZMake) std.Build.LazyPath {
