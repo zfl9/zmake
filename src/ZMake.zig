@@ -261,8 +261,8 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
 
     // create symlink pointing to the build_dir
     if (self.build_dir_symlink) |symlink_filename| {
-        const symlink = Symlink.create(b, symlink_filename, build_dir);
-        symlink.step.dependOn(pipeline.get_last_step()); // do symlink after `build`
+        const symlink = Symlink.create(b, symlink_filename, self.build_dir.?);
+        // symlink.step.dependOn(pipeline.get_last_step()); // do symlink after `build`
         b.getInstallStep().dependOn(&symlink.step); // reference it in the `install` step
     }
 
