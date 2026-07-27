@@ -3,6 +3,7 @@ const assert = std.debug.assert;
 const Pipeline = @import("Pipeline.zig");
 const Symlink = @import("Symlink.zig");
 const PatchCDB = @import("PatchCDB.zig");
+const GenFileProxy = @import("GenFileProxy.zig");
 const ZMake = @This();
 
 pub const BuildSystemType = enum {
@@ -184,7 +185,6 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
     const wf = b.addWriteFiles();
     wf.step.name = self.get_step_name("copy source");
     const build_dir = wf.addCopyDirectory(self.source_dir, "", .{});
-    self.build_dir = build_dir;
     _ = wf.add(".zmake_build.desc", description); // trigger rebuild if necessary
 
     var pipeline = Pipeline.init(b, .{ .cwd = build_dir });
@@ -248,6 +248,17 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
     const build_out = out_dir.path(b, rel_path);
     self.build_out = build_out;
 
+    // create the build_dir lazy_path
+    self.build_dir = .{
+        .generated = .{
+            .file = GenFileProxy.create(b, build_dir.generated.file),
+            .up = build_dir.generated.up,
+            .sub_path = build_dir.generated.sub_path,
+        },
+    };
+    // wait for the build to finish
+    self.build_dir.?.generated.file.step.dependOn(pipeline.get_last_step());
+
     // create symlink pointing to the build_dir
     if (self.build_dir_symlink) |symlink_filename| {
         const symlink = Symlink.create(b, symlink_filename, build_dir);
@@ -255,7 +266,7 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
         b.getInstallStep().dependOn(&symlink.step); // reference it in the `install` step
     }
 
-    return build_out;
+    return build_out.?;
 }
 
 pub fn get_build_dir(self: *const ZMake) std.Build.LazyPath {
