@@ -36,7 +36,7 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     self.step.result_cached = self.underlying.step.result_cached;
 }
 
-test {
+test "compile-check" {
     _ = &base_id;
     _ = &create;
     _ = &make;

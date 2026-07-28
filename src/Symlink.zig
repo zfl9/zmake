@@ -78,7 +78,7 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
     };
 }
 
-test {
+test "compile-check" {
     _ = &base_id;
     _ = &create;
     _ = &make;

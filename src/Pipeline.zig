@@ -55,7 +55,7 @@ pub fn get_last_step(self: *const Pipeline) *std.Build.Step {
         @panic("get_last_step() called before any steps were added");
 }
 
-test {
+test "compile-check" {
     _ = &init;
     _ = &add_command;
     _ = &add_step;

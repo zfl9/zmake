@@ -280,7 +280,7 @@ fn get_step_name(self: *const ZMake, step_name: []const u8) []const u8 {
     return b.fmt("zmake:{s} {s}", .{ self.name, step_name });
 }
 
-test {
+test "compile-check" {
     _ = &create;
     _ = &add_configure_arg;
     _ = &build;
