@@ -116,3 +116,9 @@ fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) !void {
 
     try writer.interface.flush();
 }
+
+test {
+    _ = &base_id;
+    _ = &create;
+    _ = &make;
+}

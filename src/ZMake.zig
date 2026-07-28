@@ -279,3 +279,13 @@ fn get_step_name(self: *const ZMake, step_name: []const u8) []const u8 {
     const b = self.b;
     return b.fmt("zmake:{s} {s}", .{ self.name, step_name });
 }
+
+test {
+    _ = &create;
+    _ = &add_configure_arg;
+    _ = &build;
+    _ = &get_build_dir;
+    _ = &get_build_out;
+    _ = &get_step_name;
+    _ = &BuildSystemType.check_todo;
+}
