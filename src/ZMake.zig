@@ -185,10 +185,10 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
     // copy the source files to the build_dir
     const wf = b.addWriteFiles();
     wf.step.name = self.get_step_name("copy source");
-    const build_dir = wf.addCopyDirectory(self.source_dir, "", .{});
+    const raw_build_dir = wf.addCopyDirectory(self.source_dir, "", .{});
     _ = wf.add(".zmake_build.desc", description); // trigger rebuild if necessary
 
-    var pipeline = Pipeline.init(b, .{ .cwd = build_dir });
+    var pipeline = Pipeline.init(b, .{ .cwd = raw_build_dir });
 
     // autogen.sh
     if (self.run_autogen)
@@ -226,61 +226,40 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
         bear.addArg("make");
         bear.addArg(b.fmt("-j{d}", .{self.nproc}));
 
-        const patch_cdb = PatchCDB.create(b, build_dir.path(b, "compile_commands.json"));
-        pipeline.add_step(&patch_cdb.step);
+        const patch_cdb = PatchCDB.create(b, raw_build_dir.path(b, "compile_commands.json"));
+        pipeline.add_step(&patch_cdb.step); // do it after `bear -- make`
     } else {
         const make = pipeline.add_command("make", .{ .name = self.get_step_name("make") });
         make.addArg(b.fmt("-j{d}", .{self.nproc}));
+
+        // put an empty compile_commands.json into the build_dir
         _ = wf.add("compile_commands.json", "[]\n");
     }
 
     // make install DESTDIR=build_out
     const make_install = pipeline.add_command("make", .{ .name = self.get_step_name("make install") });
     make_install.addArg("install");
-    const out_dir = make_install.addPrefixedOutputDirectoryArg("DESTDIR=", "build_out");
+    const out_root_dir = make_install.addPrefixedOutputDirectoryArg("DESTDIR=", "build_out");
 
     // $install_prefix/{include, lib, ...}
-    const rel_path = if (self.install_prefix.len > 0 and self.install_prefix[0] == '/')
+    const out_prefix = if (self.install_prefix.len > 0 and self.install_prefix[0] == '/')
         self.install_prefix[1..]
     else
         self.install_prefix;
+    const raw_build_out = out_root_dir.path(b, out_prefix);
 
-    // save the raw build_out lazy_path for later use
-    const build_out_raw = out_dir.path(b, rel_path);
-
-    // copy compile_commands.json into build_out
-    const cdb_copy = CopyFile.create(b,
-        build_dir.path(b, "compile_commands.json"),
-        out_dir,
-        "compile_commands.json",
-    );
+    // build_dir/compile_commands.json -> build_out/compile_commands.json
+    const cdb_copy = CopyFile.create(b, raw_build_dir.path(b, "compile_commands.json"), raw_build_out, "compile_commands.json");
     pipeline.add_step(&cdb_copy.step);
 
-    self.build_out = .{
-        .generated = .{
-            .file = GenFileProxy.create(b, build_out_raw.generated.file),
-            .up = build_out_raw.generated.up,
-            .sub_path = build_out_raw.generated.sub_path,
-        },
-    };
     // wait for the build to finish
-    self.build_out.?.generated.file.step.dependOn(pipeline.get_last_step());
-
-    // create the build_dir lazy_path
-    self.build_dir = .{
-        .generated = .{
-            .file = GenFileProxy.create(b, build_dir.generated.file),
-            .up = build_dir.generated.up,
-            .sub_path = build_dir.generated.sub_path,
-        },
-    };
-    // wait for the build to finish
-    self.build_dir.?.generated.file.step.dependOn(pipeline.get_last_step());
+    self.build_dir = GenFileProxy.proxy_for(b, raw_build_dir, &.{pipeline.get_last_step()});
+    self.build_out = GenFileProxy.proxy_for(b, raw_build_out, &.{pipeline.get_last_step()});
 
     // create symlink pointing to the build_dir
     if (self.build_dir_symlink) |symlink_filename| {
         const symlink = Symlink.create(b, symlink_filename, self.build_dir.?);
-        b.getInstallStep().dependOn(&symlink.step); // reference it in the `install` step
+        b.getInstallStep().dependOn(&symlink.step); // triggered during `zig build install`
     }
 
     return self.build_out.?;
