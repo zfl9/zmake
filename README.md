@@ -146,7 +146,7 @@ pub fn build(b: *std.Build) !void {
 | `run_autogen` | `bool` | 是否在 configure 前执行 autogen.sh（默认 false） |
 | `install_prefix` | `[]const u8` | 逻辑安装前缀（默认 "/usr"） |
 | `nproc` | `usize` | `make -j<N>` 并行数（默认使用当前的 CPU 核心数） |
-| `use_bear` | `bool` | 使用 `bear` 以生成 **编译数据库**（默认 false） |
+| `use_bear` | `?bool` | 使用 `bear` 以生成 **编译数据库**（默认检测环境变量 `ZMAKE_USE_BEAR` 是否存在） |
 | `build_dir_symlink` | `[]const u8` | 创建指向 `build_dir` 的符号链接（默认不创建） |
 
 > `use_bear=false` 时，build_dir 下也会创建 `compile_commands.json`，内容是 `[]` 空列表。

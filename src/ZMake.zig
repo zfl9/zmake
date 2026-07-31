@@ -61,7 +61,7 @@ pub const CreateOptions = struct {
     /// make -jN (default: number of CPUs)
     nproc: ?usize = null,
     /// use `bear -- make` to build
-    use_bear: bool = false,
+    use_bear: ?bool = null,
     /// create symlink pointing to the `build_dir`
     build_dir_symlink: ?[]const u8 = null,
 };
@@ -89,7 +89,7 @@ pub fn create(b: *std.Build, name: []const u8, options: CreateOptions) *ZMake {
         .run_autogen = options.run_autogen,
         .install_prefix = b.dupe(options.install_prefix),
         .nproc = options.nproc orelse std.Thread.getCpuCount() catch 1,
-        .use_bear = options.use_bear,
+        .use_bear = options.use_bear orelse (b.graph.env_map.get("ZMAKE_USE_BEAR") != null),
         .build_dir_symlink = if (options.build_dir_symlink) |str| b.dupe(str) else null,
     };
     return self;
