@@ -9,6 +9,7 @@ pub const Pipeline = @import("src/Pipeline.zig");
 pub const Symlink = @import("src/Symlink.zig");
 pub const PatchCDB = @import("src/PatchCDB.zig");
 pub const GenFileProxy = @import("src/GenFileProxy.zig");
+pub const CopyFile = @import("src/CopyFile.zig");
 
 test "compile-check" {
     _ = &ZMake;
@@ -16,4 +17,5 @@ test "compile-check" {
     _ = &Symlink;
     _ = &PatchCDB;
     _ = &GenFileProxy;
+    _ = &CopyFile;
 }

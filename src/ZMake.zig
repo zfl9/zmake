@@ -4,6 +4,7 @@ const Pipeline = @import("Pipeline.zig");
 const Symlink = @import("Symlink.zig");
 const PatchCDB = @import("PatchCDB.zig");
 const GenFileProxy = @import("GenFileProxy.zig");
+const CopyFile = @import("CopyFile.zig");
 const ZMake = @This();
 
 pub const BuildSystemType = enum {
@@ -244,8 +245,26 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
     else
         self.install_prefix;
 
-    // get the build_out directory
-    self.build_out = out_dir.path(b, rel_path);
+    // save the raw build_out lazy_path for later use
+    const build_out_raw = out_dir.path(b, rel_path);
+
+    // copy compile_commands.json into build_out
+    const cdb_copy = CopyFile.create(b,
+        build_dir.path(b, "compile_commands.json"),
+        out_dir,
+        "compile_commands.json",
+    );
+    pipeline.add_step(&cdb_copy.step);
+
+    self.build_out = .{
+        .generated = .{
+            .file = GenFileProxy.create(b, build_out_raw.generated.file),
+            .up = build_out_raw.generated.up,
+            .sub_path = build_out_raw.generated.sub_path,
+        },
+    };
+    // wait for the build to finish
+    self.build_out.?.generated.file.step.dependOn(pipeline.get_last_step());
 
     // create the build_dir lazy_path
     self.build_dir = .{
