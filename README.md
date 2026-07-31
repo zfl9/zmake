@@ -240,12 +240,12 @@ pub fn build(b: *std.Build) !void {
 
 ### `CopyFile`
 
-一个自定义步进，用于将文件复制到指定目录，不依赖系统 `cp` 命令。
+一个自定义的 `std.Build.Step`，用于将文件复制到指定目录，避免依赖系统 `cp` 命令。
 
-#### `CopyFile.create(b, source, dest_dir, filename) → *CopyFile`
+#### `CopyFile.create(b, src_file, dest_dir, dest_filename) → *CopyFile`
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
-| `source` | `LazyPath` | 源文件路径 |
+| `src_file` | `LazyPath` | 源文件路径 |
 | `dest_dir` | `LazyPath` | 目标目录路径 |
-| `filename` | `[]const u8` | 目标文件名 |
+| `dest_filename` | `[]const u8` | 目标文件名 |
