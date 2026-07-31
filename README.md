@@ -230,6 +230,15 @@ pub fn build(b: *std.Build) !void {
 
 为目标 GeneratedFile 创建一个代理，以便执行 `proxy.step.dependOn(other_step)`（依赖其他 step）。
 
+#### `GenFileProxy.proxy_for(b, underlying_path, depends) → LazyPath`
+
+创建代理并注入额外依赖，返回包装后的 `LazyPath`（**建议**使用此接口）。
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `underlying_path` | `LazyPath` | 被代理的原始路径（`.generated` 变体）|
+| `depends` | `[]const *std.Build.Step` | 注入给代理的额外依赖列表 |
+
 #### `GenFileProxy.create(b, underlying) → *GeneratedFile`
 
 | 参数 | 类型 | 说明 |
