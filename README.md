@@ -159,10 +159,6 @@ pub fn build(b: *std.Build) !void {
 
 执行构建，返回 **构建产出目录**（即 `{include, lib, ...}`）的 `LazyPath`。
 
-#### `zmake.get_build_dir() → LazyPath`
-
-获取指向 **构建目录** 的 `LazyPath`。只允许在 `build()` 之后调用。
-
 #### `zmake.get_build_out() → LazyPath`
 
 获取指向 **构建产出目录** 的 `LazyPath`。只允许在 `build()` 之后调用。

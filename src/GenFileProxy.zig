@@ -32,7 +32,7 @@ pub fn create(b: *std.Build, underlying: *const std.Build.GeneratedFile) *std.Bu
     self.* = .{
         .step = .init(.{
             .id = base_id,
-            .name = b.fmt("gen_file_proxy {s}", .{underlying.step.name}),
+            .name = b.fmt("{s} (genfile proxy)", .{underlying.step.name}), // keep the original name
             .owner = b,
             .makeFn = make,
         }),

@@ -40,7 +40,6 @@ nproc: usize,
 use_bear: bool,
 build_dir_symlink: ?[]const u8,
 configure_args: std.ArrayList([]const u8) = .empty,
-build_dir: ?std.Build.LazyPath = null,
 build_out: ?std.Build.LazyPath = null,
 
 pub const CreateOptions = struct {
@@ -105,7 +104,7 @@ pub fn add_configure_arg(self: *ZMake, arg: []const u8) void {
 
 /// return the path to the `build_out` directory
 pub fn build(self: *ZMake) std.Build.LazyPath {
-    if (self.build_dir != null or self.build_out != null)
+    if (self.build_out != null)
         @panic("build() has already been called");
 
     self.build_system_type.check_todo();
@@ -185,10 +184,10 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
     // copy the source files to the build_dir
     const wf = b.addWriteFiles();
     wf.step.name = self.get_step_name("copy source");
-    const raw_build_dir = wf.addCopyDirectory(self.source_dir, "", .{});
+    const build_dir = wf.addCopyDirectory(self.source_dir, "", .{});
     _ = wf.add(".zmake_build.desc", description); // trigger rebuild if necessary
 
-    var pipeline = Pipeline.init(b, .{ .cwd = raw_build_dir });
+    var pipeline = Pipeline.init(b, .{ .cwd = build_dir });
 
     // autogen.sh
     if (self.run_autogen)
@@ -226,7 +225,7 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
         bear.addArg("make");
         bear.addArg(b.fmt("-j{d}", .{self.nproc}));
 
-        const patch_cdb = PatchCDB.create(b, raw_build_dir.path(b, "compile_commands.json"));
+        const patch_cdb = PatchCDB.create(b, build_dir.path(b, "compile_commands.json"));
         pipeline.add_step(&patch_cdb.step); // do it after `bear -- make`
     } else {
         const make = pipeline.add_command("make", .{ .name = self.get_step_name("make") });
@@ -249,24 +248,19 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
     const raw_build_out = out_root_dir.path(b, out_prefix);
 
     // build_dir/compile_commands.json -> build_out/compile_commands.json
-    const cdb_copy = CopyFile.create(b, raw_build_dir.path(b, "compile_commands.json"), raw_build_out, "compile_commands.json");
+    const cdb_copy = CopyFile.create(b, build_dir.path(b, "compile_commands.json"), raw_build_out, "compile_commands.json");
     pipeline.add_step(&cdb_copy.step);
 
-    // wait for the build to finish
-    self.build_dir = GenFileProxy.proxy_for(b, raw_build_dir, &.{pipeline.get_last_step()});
-    self.build_out = GenFileProxy.proxy_for(b, raw_build_out, &.{pipeline.get_last_step()});
-
-    // create symlink pointing to the build_dir
+    // create symlink pointing to the build_dir [zig build install]
     if (self.build_dir_symlink) |symlink_filename| {
-        const symlink = Symlink.create(b, symlink_filename, self.build_dir.?);
-        b.getInstallStep().dependOn(&symlink.step); // triggered during `zig build install`
+        const symlink = Symlink.create(b, symlink_filename, build_dir);
+        symlink.step.dependOn(pipeline.get_last_step()); // wait for the build to finish
+        b.getInstallStep().dependOn(&symlink.step); // triggered when `zig build install`
     }
 
+    // wait for the build to finish
+    self.build_out = GenFileProxy.proxy_for(b, raw_build_out, &.{pipeline.get_last_step()});
     return self.build_out.?;
-}
-
-pub fn get_build_dir(self: *const ZMake) std.Build.LazyPath {
-    return self.build_dir orelse @panic("build() has not been called");
 }
 
 pub fn get_build_out(self: *const ZMake) std.Build.LazyPath {
@@ -282,7 +276,6 @@ test "compile-check" {
     _ = &create;
     _ = &add_configure_arg;
     _ = &build;
-    _ = &get_build_dir;
     _ = &get_build_out;
     _ = &get_step_name;
     _ = &BuildSystemType.check_todo;
