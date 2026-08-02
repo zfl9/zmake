@@ -248,7 +248,9 @@ pub fn build(self: *ZMake) std.Build.LazyPath {
     const raw_build_out = out_root_dir.path(b, out_prefix);
 
     // build_dir/compile_commands.json -> build_out/compile_commands.json
-    const cdb_copy = CopyFile.create(b, build_dir.path(b, "compile_commands.json"), raw_build_out, "compile_commands.json");
+    // NOTE: copy to the DESTDIR root (build_out/), not build_out/<install_prefix>/,
+    // because zcdb resolves the cdb from the genfile proxy's root dir.
+    const cdb_copy = CopyFile.create(b, build_dir.path(b, "compile_commands.json"), out_root_dir, "compile_commands.json");
     pipeline.add_step(&cdb_copy.step);
 
     // create symlink pointing to the build_dir [zig build install]
